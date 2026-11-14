@@ -473,10 +473,12 @@ function route_(a,p){switch(a){
     }catch(_e){}
     const file=DriveApp.getFileById(id);
     assert_(!file.isTrashed(),'ไฟล์ภาพถูกลบออกจาก Drive แล้ว');
+    assert_(file.getSize()<3500000,'ภาพใหญ่เกินระบบแสดงผล');
     const blob=file.getBlob();
-    assert_(blob.getSize()<3500000,'ภาพใหญ่เกินระบบแสดงผล');
-    const mime=blob.getContentType()||'image/jpeg';
-    const dataUrl='data:'+mime+';base64,'+Utilities.base64Encode(blob.getBytes());
+    const bytes=blob.getBytes();
+    assert_(bytes.length<3500000,'ภาพใหญ่เกินระบบแสดงผล');
+    const mime=blob.getContentType()||file.getMimeType()||'image/jpeg';
+    const dataUrl='data:'+mime+';base64,'+Utilities.base64Encode(bytes);
     try{if(dataUrl.length<90000)CacheService.getScriptCache().put('media_v1_'+id,dataUrl,60);}catch(_e){}
     return {dataUrl};
   }
