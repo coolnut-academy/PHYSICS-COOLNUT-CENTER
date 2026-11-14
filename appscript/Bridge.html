@@ -25,17 +25,16 @@
 </head>
 
 <body>
-  <div id="standalone" hidden class="box"><strong>PHYSICS COOLNUT CENTER</strong>
-    <p>Apps Script RPC Bridge พร้อมใช้งาน (เชื่อมต่อผ่าน iframe ของเว็บไซต์)</p>
+  <div id="standalone" class="box"><strong>PHYSICS COOLNUT CENTER</strong>
+    <p>Apps Script WebApp API พร้อมใช้งาน (รองรับการเชื่อมต่อผ่าน POST JSON และ CORS)</p>
   </div>
   <script>
-    if (window.self === window.parent) { document.getElementById('standalone').hidden = false; }
-    // ค่า ORIGIN นี้ถูกกำหนดฝั่ง Apps Script Script Properties เท่านั้น
     const ALLOWED_ORIGINS = <?!= allowedOriginsJSON ?>;
     function allowed(origin) { return ALLOWED_ORIGINS.includes(origin) }
+    const hostTarget = (window.top && window.top !== window) ? window.top : window.parent;
     window.addEventListener('message', function (event) {
       const msg = event.data || {};
-      if (msg.type !== 'classfolio:rpc' || event.source !== window.parent) return;
+      if (msg.type !== 'classfolio:rpc') return;
       const id = String(msg.id || '');
       if (!allowed(event.origin)) {
         event.source.postMessage({ type: 'classfolio:rpc-result', id: id, ok: false, error: 'Origin ' + event.origin + ' ยังไม่ได้รับอนุญาตใน ALLOWED_ORIGINS' }, event.origin);
@@ -51,7 +50,7 @@
         event.source.postMessage({ type: 'classfolio:rpc-result', id: id, ok: false, error: String(err && err.message ? err.message : err) }, event.origin);
       }).api(msg.action, msg.payload || {});
     });
-    window.parent.postMessage({ type: 'classfolio:bridge-ready' }, '*');
+    try { if (hostTarget && hostTarget !== window) hostTarget.postMessage({ type: 'classfolio:bridge-ready' }, '*'); } catch (_e) { }
   </script>
 </body>
 

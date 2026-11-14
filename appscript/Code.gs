@@ -288,14 +288,14 @@ function allowedOrigins_(){
 
 function buildBridgeHtml_(allowedOriginsJSON){
   return '<!DOCTYPE html><html><head><meta charset="utf-8"><style>html,body{margin:0;padding:0;font-family:system-ui,sans-serif;color:#143326;background:#f7f9f5}.box{max-width:460px;margin:48px auto;padding:20px;border:1px solid #d5e2d8;border-radius:14px;background:#fff}</style></head><body>'
-    +'<div id="standalone" hidden class="box"><strong>PHYSICS COOLNUT CENTER</strong><p>Apps Script RPC Bridge พร้อมใช้งาน (เชื่อมต่อผ่าน iframe ของเว็บไซต์)</p></div>'
+    +'<div id="standalone" class="box"><strong>PHYSICS COOLNUT CENTER</strong><p>Apps Script WebApp API พร้อมใช้งาน (รองรับการเชื่อมต่อผ่าน POST JSON และ CORS)</p></div>'
     +'<script>'
-    +'if(window.self===window.parent){document.getElementById("standalone").hidden=false;}'
     +'const ALLOWED_ORIGINS='+allowedOriginsJSON+';'
     +'function allowed(origin){return ALLOWED_ORIGINS.includes(origin);}'
+    +'const hostTarget=(window.top&&window.top!==window)?window.top:window.parent;'
     +'window.addEventListener("message",function(event){'
     +'const msg=event.data||{};'
-    +'if(msg.type!=="classfolio:rpc"||event.source!==window.parent)return;'
+    +'if(msg.type!=="classfolio:rpc")return;'
     +'const id=String(msg.id||"");'
     +'if(!allowed(event.origin)){event.source.postMessage({type:"classfolio:rpc-result",id:id,ok:false,error:"Origin "+event.origin+" ยังไม่ได้รับอนุญาตใน ALLOWED_ORIGINS"},event.origin);return;}'
     +'google.script.run.withSuccessHandler(function(result){'
@@ -305,25 +305,47 @@ function buildBridgeHtml_(allowedOriginsJSON){
     +'event.source.postMessage({type:"classfolio:rpc-result",id:id,ok:false,error:String(err&&err.message?err.message:err)},event.origin);'
     +'}).api(msg.action,msg.payload||{});'
     +'});'
-    +'window.parent.postMessage({type:"classfolio:bridge-ready"},"*");'
+    +'try{if(hostTarget&&hostTarget!==window)hostTarget.postMessage({type:"classfolio:bridge-ready"},"*");}catch(_e){}'
     +'<'+'/script></body></html>';
+}
+
+function jsonOut_(obj){
+  return ContentService
+    .createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 function doGet(e){
   const originsJSON=JSON.stringify(allowedOrigins_());
+  const mode=String(e&&e.parameter&&e.parameter.mode||'');
   let output=null;
-  try{
-    if(HtmlService.createHtmlOutputFromFile('Bridge').getContent().indexOf('classfolio:rpc')!==-1){
-      const template=HtmlService.createTemplateFromFile('Bridge');
-      template.allowedOriginsJSON=originsJSON;
-      output=template.evaluate();
+  if(mode==='bridge'){
+    for(const name of ['Bridge','bridge']){
+      try{
+        if(HtmlService.createHtmlOutputFromFile(name).getContent().indexOf('classfolio:rpc')!==-1){
+          const template=HtmlService.createTemplateFromFile(name);
+          template.allowedOriginsJSON=originsJSON;
+          output=template.evaluate();
+          break;
+        }
+      }catch(_err){}
     }
-  }catch(_err){}
+  }
   if(!output)output=HtmlService.createHtmlOutput(buildBridgeHtml_(originsJSON));
-  return output.setTitle('Physics Coolnut Center Bridge').setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  return output.setTitle('Physics Coolnut Center API').setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
-/** รับเฉพาะจาก google.script.run ใน Bridge; ไม่รับ POST JSON แบบ fetch(no-cors) */
+function doPost(e){
+  try{
+    const raw=String(e&&e.postData&&e.postData.contents?e.postData.contents:'{}');
+    const body=JSON.parse(raw);
+    return jsonOut_(api(body.action,body.payload||{}));
+  }catch(err){
+    return jsonOut_({ok:false,error:String(err&&err.message?err.message:err)});
+  }
+}
+
+/** จุดรวมเรียกคำสั่งฝั่ง Server (รองรับทั้ง doPost JSON และ google.script.run) */
 function api(action,payload){try{return {ok:true,data:route_(String(action||''),payload||{})};}catch(err){return {ok:false,error:String(err.message||err)};}}
 
 function route_(a,p){switch(a){
