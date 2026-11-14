@@ -54,7 +54,14 @@ function driveFolderId_(){
   assert_(id,'ยังไม่ได้ตั้งค่า DRIVE_FOLDER_ID · รัน setupPhysicsCoolnut()');
   return id;
 }
-function spreadsheet_(){return SpreadsheetApp.openById(spreadsheetId_());}
+let reqCache_={ss:null,sheets:{},rows:{}};
+function resetReqCache_(){reqCache_={ss:null,sheets:{},rows:{}};}
+function invalidateTable_(name){
+  if(reqCache_&&reqCache_.rows)delete reqCache_.rows[name];
+  try{CacheService.getScriptCache().remove('tbl_v1_'+name);}catch(_e){}
+}
+
+function spreadsheet_(){return reqCache_.ss||(reqCache_.ss=SpreadsheetApp.openById(spreadsheetId_()));}
 function driveFolder_(){return DriveApp.getFolderById(driveFolderId_());}
 
 function ensureSchema_(ss,name){
@@ -82,40 +89,61 @@ function ensureSchema_(ss,name){
 }
 
 function sheet_(name){
+  if(reqCache_.sheets[name])return reqCache_.sheets[name];
   const ss=spreadsheet_();
-  const s=ss.getSheetByName(name);
-  if(s&&s.getLastRow()>=1&&s.getLastColumn()>=TABLES[name].length)return s;
-  return withLock_(()=>ensureSchema_(ss,name));
+  let s=ss.getSheetByName(name);
+  if(!(s&&s.getLastRow()>=1&&s.getLastColumn()>=TABLES[name].length)){
+    s=withLock_(()=>ensureSchema_(ss,name));
+  }
+  return (reqCache_.sheets[name]=s);
 }
 
 function rows_(name){
+  if(reqCache_.rows[name])return reqCache_.rows[name];
+  try{
+    const cached=CacheService.getScriptCache().get('tbl_v1_'+name);
+    if(cached){
+      const parsed=JSON.parse(cached);
+      if(Array.isArray(parsed))return (reqCache_.rows[name]=parsed);
+    }
+  }catch(_e){}
   const s=sheet_(name), values=s.getDataRange().getValues();
-  if(values.length<2)return [];
-  const heads=TABLES[name];
-  const rawHeaders=values[0].map(h=>String(h||'').trim());
-  const colIdx=heads.map(h=>rawHeaders.indexOf(h));
-  const idIdx=colIdx[0]>=0?colIdx[0]:0;
-  return values.slice(1)
-    .map((r,i)=>({r,row:i+2}))
-    .filter(({r})=>String(r[idIdx]||'').trim()!=='')
-    .map(({r,row})=>{
-      const obj={_row:row};
-      heads.forEach((h,j)=>{
-        const idx=colIdx[j]>=0?colIdx[j]:j;
-        obj[h]=cellVal_(r[idx]);
+  let out=[];
+  if(values.length>=2){
+    const heads=TABLES[name];
+    const rawHeaders=values[0].map(h=>String(h||'').trim());
+    const colIdx=heads.map(h=>rawHeaders.indexOf(h));
+    const idIdx=colIdx[0]>=0?colIdx[0]:0;
+    out=values.slice(1)
+      .map((r,i)=>({r,row:i+2}))
+      .filter(({r})=>String(r[idIdx]||'').trim()!=='')
+      .map(({r,row})=>{
+        const obj={_row:row};
+        heads.forEach((h,j)=>{
+          const idx=colIdx[j]>=0?colIdx[j]:j;
+          obj[h]=cellVal_(r[idx]);
+        });
+        return obj;
       });
-      return obj;
-    });
+  }
+  reqCache_.rows[name]=out;
+  try{
+    const json=JSON.stringify(out);
+    if(json.length<90000)CacheService.getScriptCache().put('tbl_v1_'+name,json,30);
+  }catch(_e){}
+  return out;
 }
 
 function insert_(name,record){
   const cols=TABLES[name];
   sheet_(name).appendRow(cols.map(key=>safe_(record[key],25000)));
+  invalidateTable_(name);
 }
 function update_(name,record){
   const cols=TABLES[name];
   assert_(record._row,'ข้อมูลไม่พบแถวต้นฉบับ');
   sheet_(name).getRange(record._row,1,1,cols.length).setValues([cols.map(key=>safe_(record[key],25000))]);
+  invalidateTable_(name);
 }
 function log_(action,refId){insert_('AdminLog',{id:uid_(),action,refId,createdAt:time_()});}
 
@@ -241,7 +269,8 @@ function setupPhysicsCoolnut(){
   p.setProperty('DRIVE_FOLDER_ID',folderId);
 
   const ss=SpreadsheetApp.openById(sid);
-  Object.keys(TABLES).forEach(name=>ensureSchema_(ss,name));
+  reqCache_.ss=ss;
+  Object.keys(TABLES).forEach(name=>{ensureSchema_(ss,name);invalidateTable_(name);});
   const folder=DriveApp.getFolderById(folderId);
 
   const tempPass=String(p.getProperty('TEACHER_PASSWORD_TEMP')||'');
@@ -346,7 +375,7 @@ function doPost(e){
 }
 
 /** จุดรวมเรียกคำสั่งฝั่ง Server (รองรับทั้ง doPost JSON และ google.script.run) */
-function api(action,payload){try{return {ok:true,data:route_(String(action||''),payload||{})};}catch(err){return {ok:false,error:String(err.message||err)};}}
+function api(action,payload){resetReqCache_();try{return {ok:true,data:route_(String(action||''),payload||{})};}catch(err){return {ok:false,error:String(err.message||err)};}finally{resetReqCache_();}}
 
 function route_(a,p){switch(a){
   case 'healthCheck':{
@@ -438,12 +467,18 @@ function route_(a,p){switch(a){
     const g=rows_('Groups').find(x=>[String(x.coverId||''),String(x.page1Id||''),String(x.page2Id||'')].includes(id));
     assert_(g,'ไม่พบภาพผลงาน');
     requireTopic_(g.topicId,p);
+    try{
+      const cachedImg=CacheService.getScriptCache().get('media_v1_'+id);
+      if(cachedImg)return {dataUrl:cachedImg};
+    }catch(_e){}
     const file=DriveApp.getFileById(id);
     assert_(!file.isTrashed(),'ไฟล์ภาพถูกลบออกจาก Drive แล้ว');
     const blob=file.getBlob();
     assert_(blob.getSize()<3500000,'ภาพใหญ่เกินระบบแสดงผล');
     const mime=blob.getContentType()||'image/jpeg';
-    return {dataUrl:'data:'+mime+';base64,'+Utilities.base64Encode(blob.getBytes())};
+    const dataUrl='data:'+mime+';base64,'+Utilities.base64Encode(blob.getBytes());
+    try{if(dataUrl.length<90000)CacheService.getScriptCache().put('media_v1_'+id,dataUrl,60);}catch(_e){}
+    return {dataUrl};
   }
   case 'addFeedback':return withLock_(()=>{
     const from=rows_('Groups').find(x=>String(x.id)===String(p.fromGroupId||''));

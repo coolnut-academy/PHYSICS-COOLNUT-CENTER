@@ -12,17 +12,53 @@ export async function optimizeImage(file,role='page'){
   const ctx=canvas.getContext('2d');ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,canvas.width,canvas.height);
   const target=(role==='cover'?CONFIG.MAX_COVER_KB:CONFIG.MAX_PAGE_KB)*1024;
   let data='';
-  for(const q of [0.84,0.76,0.65,0.53,0.42]){data=canvas.toDataURL('image/jpeg',q);if(data.length*0.75<=target)break;}
+  for(const q of [0.82,0.72,0.60,0.48,0.38]){data=canvas.toDataURL('image/jpeg',q);if(data.length*0.75<=target)break;}
   return data;
 }
+const MEDIA_CACHE_NAME='cf-media-v1';
 const mediaCache=new Map();
-export function clearMediaCache(){mediaCache.clear();}
+const inflightMedia=new Map();
+function cacheKeyUrl(id){return `https://cf-media.local/${encodeURIComponent(id)}`;}
+function setMemoryCache(id,url){
+  if(mediaCache.has(id))mediaCache.delete(id);
+  else if(mediaCache.size>=80){const oldest=mediaCache.keys().next().value;mediaCache.delete(oldest);}
+  mediaCache.set(id,url);
+}
+async function readStoredMedia(id){
+  if(typeof caches!=='object'||typeof Response!=='function')return null;
+  try{
+    const cache=await caches.open(MEDIA_CACHE_NAME);
+    const hit=await cache.match(cacheKeyUrl(id));
+    if(!hit)return null;
+    const text=await hit.text();
+    return text.startsWith('data:')?text:null;
+  }catch{return null;}
+}
+async function writeStoredMedia(id,dataUrl){
+  if(typeof caches!=='object'||typeof Response!=='function')return;
+  try{
+    const cache=await caches.open(MEDIA_CACHE_NAME);
+    await cache.put(cacheKeyUrl(id),new Response(dataUrl,{headers:{'Content-Type':'text/plain;charset=utf-8'}}));
+  }catch{}
+}
+export function clearMediaCache(){
+  mediaCache.clear();
+  inflightMedia.clear();
+  if(typeof caches==='object'){try{caches.delete(MEDIA_CACHE_NAME).catch(()=>{});}catch{}}
+}
 export async function getMediaSource(api,mediaId){
   if(!mediaId) return './assets/demo/empty-page.svg';
   if(mediaId.startsWith('./')||mediaId.startsWith('data:'))return mediaId;
   if(mediaCache.has(mediaId))return mediaCache.get(mediaId);
-  const data=await api.call('getMedia',{mediaId});
-  if(mediaCache.size>=40){const oldest=mediaCache.keys().next().value;mediaCache.delete(oldest);}
-  mediaCache.set(mediaId,data.dataUrl);
-  return data.dataUrl;
+  if(inflightMedia.has(mediaId))return inflightMedia.get(mediaId);
+  const job=(async()=>{
+    const stored=await readStoredMedia(mediaId);
+    if(stored){setMemoryCache(mediaId,stored);return stored;}
+    const data=await api.call('getMedia',{mediaId});
+    setMemoryCache(mediaId,data.dataUrl);
+    writeStoredMedia(mediaId,data.dataUrl);
+    return data.dataUrl;
+  })();
+  inflightMedia.set(mediaId,job);
+  try{return await job;}finally{inflightMedia.delete(mediaId);}
 }

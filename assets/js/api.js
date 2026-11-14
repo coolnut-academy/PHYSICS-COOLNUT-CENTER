@@ -1,15 +1,33 @@
 import {CONFIG} from './config.js';
 import {mock} from './mock.js';
 
+const READ_ACTIONS=new Set(['healthCheck','getTopics','getTopic','getMedia']);
+const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+
 /**
  * Production API client: CORS POST (text/plain, credentials: omit) -> Apps Script doPost -> ContentService JSON
- * ใช้ credentials: 'omit' เพื่อเลี่ยง Google multi-account redirect (/macros/u/N/s/...) และรับผลลัพธ์ JSON จาก Server จริง
+ * ใช้ credentials: 'omit' เพื่อเลี่ยง Google multi-account redirect (/macros/u/N/s/...) และ retry เฉพาะคำสั่งอ่านเมื่อเน็ตสะดุด
  */
 class LiveApiClient {
   constructor(url){
     this.url=url;
   }
   async call(action,payload={}){
+    const canRetry=READ_ACTIONS.has(action);
+    const maxAttempts=canRetry?2:1;
+    let lastErr;
+    for(let attempt=0;attempt<maxAttempts;attempt++){
+      try{
+        return await this.sendOnce(action,payload);
+      }catch(err){
+        lastErr=err;
+        if(!canRetry||attempt===maxAttempts-1||!err?.retryable)throw err;
+        await pause(300);
+      }
+    }
+    throw lastErr;
+  }
+  async sendOnce(action,payload){
     const controller=new AbortController();
     const timer=setTimeout(()=>controller.abort(),CONFIG.REQUEST_TIMEOUT_MS);
     try{
@@ -33,8 +51,16 @@ class LiveApiClient {
       if(!result.ok)throw new Error(result.error||'บริการไม่ตอบกลับ');
       return result.data;
     }catch(err){
-      if(err?.name==='AbortError')throw new Error('หมดเวลารอเซิร์ฟเวอร์ กรุณาตรวจสถานะก่อนลองส่งใหม่');
-      if(err instanceof TypeError)throw new Error('เชื่อมต่อ Apps Script ไม่ได้ ตรวจ URL /exec และการ Deploy (Execute as: Me, Access: Anyone)');
+      if(err?.name==='AbortError'){
+        const e=new Error('หมดเวลารอเซิร์ฟเวอร์ กรุณาตรวจสถานะก่อนลองส่งใหม่');
+        e.retryable=true;
+        throw e;
+      }
+      if(err instanceof TypeError){
+        const e=new Error('เชื่อมต่อ Apps Script ไม่ได้ ตรวจ URL /exec และการ Deploy (Execute as: Me, Access: Anyone)');
+        e.retryable=true;
+        throw e;
+      }
       throw err;
     }finally{
       clearTimeout(timer);
