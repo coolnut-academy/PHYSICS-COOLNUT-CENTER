@@ -7,9 +7,9 @@ python -m json.tool "$ROOT/appscript/appsscript.json" >/dev/null
 python - "$ROOT" <<'PY'
 import pathlib,sys
 p=pathlib.Path(sys.argv[1]);a=(p/'assets/js/app.js').read_text(); backend=(p/'appscript/Code.gs').read_text()
-for key in ['new-topic','edit-topic','new-group','add-member','remove-member','present','next-slide','prev-slide','full-screen','zoom-slide','comment','revision','open-quiz']:
+for key in ['new-topic','edit-topic','new-group','add-member','remove-member','present','next-slide','prev-slide','full-screen','zoom-slide','comment','revision']:
  assert key in a,key
-for key in ['createTopic','updateTopic','createGroup','updateGroup','getMedia','addFeedback','setQuiz','answerQuiz','exportTopic']:
+for key in ['createTopic','updateTopic','createGroup','updateGroup','getMedia','addFeedback','exportTopic']:
  assert f"case '{key}'" in backend,key
 for field in ['membersJSON','requirements','targetUrl','type']:
  assert field in backend,field

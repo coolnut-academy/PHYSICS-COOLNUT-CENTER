@@ -45,10 +45,8 @@ let duplicate=false;try{await mock.call('createGroup',{topicId:submission.id,acc
 assert.ok(duplicate,'duplicate student should fail');
 const other=await mock.call('createGroup',{topicId:submission.id,accessCode:'TEST99',number:2,title:'กลุ่ม 2',membersList:[{firstName:'อภิชาติ',lastName:'สมมติ',className:'ม.4/1',studentNo:'16'}]});
 await mock.call('addFeedback',{accessCode:'TEST99',fromGroupId:other.group.id,toGroupId:g.group.id,editCode:other.editCode,text:'ตรวจค่า d จากจุดหมุนให้ครบถ้วน'});
-await mock.call('setQuiz',{token:teacher,topicId:submission.id,text:'2+2 = ?',options:['3','4','5','6'],correctIndex:1});
-await mock.call('answerQuiz',{topicId:submission.id,accessCode:'TEST99',studentNo:'12',optionIndex:1});
 const res=await mock.call('getTopic',{topicId:submission.id,token:teacher});
-assert.equal(res.quizStats.length,1);assert.equal(res.feedback.length,1);assert.equal(res.groups[0].membersList[0].className,'ม.4/1');
+assert.equal(res.feedback.length,1);assert.equal(res.groups[0].membersList[0].className,'ม.4/1');
 const exported=await mock.call('exportTopic',{token:teacher,topicId:submission.id});
 assert.equal(exported.groups.length,2);assert.equal(exported.groups[0].membersList.length,2);
-console.log('PASS: mock API — button types, link validation, editing, group roster, media, access, feedback, quiz, export');
+console.log('PASS: mock API — button types, link validation, editing, group roster, media, access, feedback, export');

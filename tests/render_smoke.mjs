@@ -22,11 +22,12 @@ if(mode==='home'){
 if(mode==='teacher'){
  assert.ok(content.includes('ลิงก์เรียนรู้'));
  assert.ok(content.includes('สร้างปุ่มกิจกรรม'));
- assert.ok(content.includes('Quiz ในเว็บ'));
+ assert.ok(!content.includes('Quiz ในเว็บ'));
 }
 if(mode==='topic'){
  assert.ok(content.includes('สิ่งที่ต้องส่ง'));
  assert.ok(content.includes('สร้างการ์ดกลุ่ม'));
  assert.ok(content.includes('กลุ่มที่ 1'));
+ assert.ok(!content.includes('Quiz สั้น ๆ'));
 }
 console.log('PASS: SPA render smoke —',mode);

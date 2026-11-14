@@ -9,10 +9,10 @@ const normalizeMembers=v=>{if(!Array.isArray(v)||v.length<1||v.length>8)throw Er
 const genId=()=>('id-'+crypto.randomUUID());
 const seed=()=>({
   topics:[
-    {id:'torquelab-demo',type:'submission',targetUrl:'',requirements:'ภาพหมู่ 1 ภาพ + ใบงาน A4 สองหน้า (FBD และผลทดลอง)',title:'ส่งงาน · สมดุลต่อการหมุน',subject:'ฟิสิกส์ 2',className:'ม.4/1',description:'ทดลองคานจริง วาด Free Body Diagram และอธิบายจากหลักฐาน',accessCode:'TL2569',open:true,createdAt:now(),quiz:{text:'จุดหมุนอยู่ที่ 50 cm วางตุ้มที่ 70 cm แขนโมเมนต์ยาวเท่าไร?',options:['20 cm','50 cm','70 cm','120 cm'],correctIndex:0,active:true}},
-    {id:'other-demo',type:'submission',targetUrl:'',requirements:'ปกกลุ่ม + ภาพผลงาน 2 หน้า',title:'ส่งงาน · โครงงานฟิสิกส์รอบตัว',subject:'กิจกรรมสร้างสรรค์',className:'ม.4',description:'รวบรวมภาพผลงานและนำเสนอหน้าชั้น',accessCode:'CLASS01',open:true,createdAt:now(),quiz:null}
-    ,{id:'external-phet-demo',type:'link',targetUrl:'https://phet.colorado.edu/th/simulations/balancing-act',title:'เรียนรู้ · แบบจำลองคานสมดุล',subject:'Simulation',className:'ม.4/1',description:'เปิดกิจกรรมจำลองบนเว็บไซต์ PhET (แหล่งเรียนรู้ภายนอก)',accessCode:'',open:true,createdAt:now(),quiz:null},
-    {id:'external-quiz-demo',type:'link',targetUrl:'https://forms.google.com',title:'Quiz ภายนอก · ตัวอย่างปุ่ม',subject:'แบบทดสอบ',className:'ม.4/1',description:'ปุ่มตัวอย่างสำหรับครูแก้ไขให้เป็นลิงก์ Quiz จริงที่สร้างไว้',accessCode:'',open:true,createdAt:now(),quiz:null}
+    {id:'torquelab-demo',type:'submission',targetUrl:'',requirements:'ภาพหมู่ 1 ภาพ + ใบงาน A4 สองหน้า (FBD และผลทดลอง)',title:'ส่งงาน · สมดุลต่อการหมุน',subject:'ฟิสิกส์ 2',className:'ม.4/1',description:'ทดลองคานจริง วาด Free Body Diagram และอธิบายจากหลักฐาน',accessCode:'TL2569',open:true,createdAt:now()},
+    {id:'other-demo',type:'submission',targetUrl:'',requirements:'ปกกลุ่ม + ภาพผลงาน 2 หน้า',title:'ส่งงาน · โครงงานฟิสิกส์รอบตัว',subject:'กิจกรรมสร้างสรรค์',className:'ม.4',description:'รวบรวมภาพผลงานและนำเสนอหน้าชั้น',accessCode:'CLASS01',open:true,createdAt:now()}
+    ,{id:'external-phet-demo',type:'link',targetUrl:'https://phet.colorado.edu/th/simulations/balancing-act',title:'เรียนรู้ · แบบจำลองคานสมดุล',subject:'Simulation',className:'ม.4/1',description:'เปิดกิจกรรมจำลองบนเว็บไซต์ PhET (แหล่งเรียนรู้ภายนอก)',accessCode:'',open:true,createdAt:now()},
+    {id:'external-quiz-demo',type:'link',targetUrl:'https://forms.google.com',title:'Quiz ภายนอก · ตัวอย่างปุ่ม',subject:'แบบทดสอบ',className:'ม.4/1',description:'ปุ่มตัวอย่างสำหรับครูแก้ไขให้เป็นลิงก์ Quiz จริงที่สร้างไว้',accessCode:'',open:true,createdAt:now()}
   ],
   groups:[
     {id:'demo-g1',topicId:'torquelab-demo',number:1,title:'กลุ่มที่ 1 · ตัวอย่าง',members:'นักเรียนตัวอย่าง 1–4',coverId:'./assets/demo/cover-a.svg',page1Id:'./assets/demo/page-predict.svg',page2Id:'./assets/demo/page-observe.svg',editCodeHash:'demo-group-1',revision:'ตัวอย่าง: ปรับจากการใช้ตำแหน่ง x ไปใช้แขนโมเมนต์ d ที่วัดจากจุดหมุน',updatedAt:now(),demo:true},
@@ -20,12 +20,12 @@ const seed=()=>({
     {id:'demo-g3',topicId:'torquelab-demo',number:3,title:'กลุ่มที่ 3 · ตัวอย่าง',members:'นักเรียนตัวอย่าง 9–12',coverId:'./assets/demo/cover-c.svg',page1Id:'./assets/demo/page-predict.svg',page2Id:null,editCodeHash:'demo-group-3',revision:'',updatedAt:now(),demo:true}
   ],
   feedback:[{id:'demo-feedback',topicId:'torquelab-demo',fromGroupId:'demo-g2',toGroupId:'demo-g1',text:'ตัวอย่าง: ระบุระยะ d จากจุดหมุนได้ชัดเจนขึ้น',createdAt:now(),demo:true}],
-  answers:[], media:{}, logs:[]
+  media:{}, logs:[]
 });
 async function database(){return new Promise((res,rej)=>{const r=indexedDB.open(DB,1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
 async function getState(){const db=await database();return new Promise((res,rej)=>{const tx=db.transaction('kv','readonly'), r=tx.objectStore('kv').get('state');r.onsuccess=()=>{db.close();res(r.result||seed())};r.onerror=()=>rej(r.error);});}
 async function saveState(v){const db=await database();return new Promise((res,rej)=>{const tx=db.transaction('kv','readwrite');tx.objectStore('kv').put(v,'state');tx.oncomplete=()=>{db.close();res()};tx.onerror=()=>rej(tx.error);});}
-function topicInfo(t,groups,admin){return {type:'submission',targetUrl:'',...t,accessCode:admin?t.accessCode:undefined,groupCount:groups.filter(g=>g.topicId===t.id).length,quiz:t.quiz?{active:t.quiz.active}:null};}
+function topicInfo(t,groups,admin){return {type:'submission',targetUrl:'',...t,accessCode:admin?t.accessCode:undefined,groupCount:groups.filter(g=>g.topicId===t.id).length};}
 function groupPublic(g){const {editCodeHash,...v}=g;return {...v,membersList:Array.isArray(g.membersList)?g.membersList:[]};}
 function hasAccess(state,topicId,p){const t=state.topics.find(x=>x.id===topicId);if(!t)throw new Error('ไม่พบหัวข้อ');if(t.type==='link')throw Error('ปุ่มนี้เป็นลิงก์ ไม่รับส่งผลงาน');if(p.token==='demo-teacher')return t;if((p.accessCode||'').trim().toUpperCase()!==t.accessCode.toUpperCase())throw new Error('รหัสเข้าหัวข้อไม่ถูกต้อง');return t;}
 function owned(g,p){if(p.token==='demo-teacher')return true;return p.editCode==='DEMO'+g.number || p.editCode===g.editCodeHash;}
@@ -37,11 +37,11 @@ export const mock={
       case 'teacherLogin':out={token:'demo-teacher',expiresInSeconds:3600,mode:'demo'};break;
       case 'healthCheck':out={mode:'demo',status:'ok',storage:'indexeddb'};break;
       case 'getTopic':{
-        const t=hasAccess(s,p.topicId,p);out={topic:topicInfo(t,s.groups,p.token==='demo-teacher'),groups:s.groups.filter(g=>g.topicId===t.id).map(groupPublic),feedback:s.feedback.filter(f=>f.topicId===t.id),quiz:t.quiz?{text:t.quiz.text,options:t.quiz.options,active:t.quiz.active}:null,quizStats:p.token==='demo-teacher'?s.answers.filter(a=>a.topicId===t.id):null};break;
+        const t=hasAccess(s,p.topicId,p);out={topic:topicInfo(t,s.groups,p.token==='demo-teacher'),groups:s.groups.filter(g=>g.topicId===t.id).map(groupPublic),feedback:s.feedback.filter(f=>f.topicId===t.id)};break;
       }
       case 'createTopic':{
         if(p.token!=='demo-teacher')throw Error('เฉพาะครู');
-        const type=p.type==='link'?'link':'submission';const topic={id:genId(),type,targetUrl:type==='link'?checkUrl(p.targetUrl):'',title:p.title.trim().slice(0,80),subject:(p.subject||'').trim().slice(0,60),className:(p.className||'').trim().slice(0,40),description:(p.description||'').trim().slice(0,300),requirements:(p.requirements||'').trim().slice(0,600),accessCode:type==='link'?'':(p.accessCode||'').toUpperCase().trim(),open:true,createdAt:now(),quiz:null};
+        const type=p.type==='link'?'link':'submission';const topic={id:genId(),type,targetUrl:type==='link'?checkUrl(p.targetUrl):'',title:p.title.trim().slice(0,80),subject:(p.subject||'').trim().slice(0,60),className:(p.className||'').trim().slice(0,40),description:(p.description||'').trim().slice(0,300),requirements:(p.requirements||'').trim().slice(0,600),accessCode:type==='link'?'':(p.accessCode||'').toUpperCase().trim(),open:true,createdAt:now()};
         if(topic.title.length<2||(type==='submission'&&topic.accessCode.length<4))throw Error('กรอกชื่อหัวข้อและรหัสเข้าหัวข้ออย่างน้อย 4 ตัวอักษร');
         s.topics.unshift(topic);out=topic;break;
       }
@@ -79,9 +79,7 @@ export const mock={
         if(existing){existing.text=text;existing.createdAt=now();out=existing;}
         else{out={id:genId(),topicId:target.topicId,fromGroupId:source.id,toGroupId:target.id,text,createdAt:now()};s.feedback.push(out);}break;
       }
-      case 'setQuiz':{if(p.token!=='demo-teacher')throw Error('เฉพาะครู');const t=s.topics.find(x=>x.id===p.topicId);if(!t)throw Error('ไม่พบหัวข้อ');if((p.options||[]).length!==4)throw Error('ต้องมี 4 ตัวเลือก');t.quiz={text:p.text.slice(0,280),options:p.options.map(x=>x.slice(0,160)),correctIndex:Number(p.correctIndex),active:true};out={saved:true};break;}
-      case 'answerQuiz':{const t=hasAccess(s,p.topicId,p);if(!t.quiz?.active)throw Error('ไม่มี Quiz ที่เปิดใช้งาน');const no=String(p.studentNo||'').trim();if(!/^\d{1,5}$/.test(no))throw Error('กรอกเลขที่นักเรียนให้ถูกต้อง');if(s.answers.some(a=>a.topicId===t.id&&a.studentNo===no))throw Error('เลขที่นี้ส่งคำตอบแล้ว');const answer=Number(p.optionIndex);if(answer<0||answer>3)throw Error('เลือกคำตอบก่อนส่ง');out={saved:true};s.answers.push({topicId:t.id,studentNo:no,optionIndex:answer,correct:answer===t.quiz.correctIndex,createdAt:now()});break;}
-      case 'exportTopic':{if(p.token!=='demo-teacher')throw Error('เฉพาะครู');const t=s.topics.find(x=>x.id===p.topicId);if(!t)throw Error('ไม่พบหัวข้อ');out={exportedAt:now(),topic:t,groups:s.groups.filter(g=>g.topicId===t.id).map(groupPublic),feedback:s.feedback.filter(f=>f.topicId===t.id),quizAnswers:s.answers.filter(a=>a.topicId===t.id)};break;}
+      case 'exportTopic':{if(p.token!=='demo-teacher')throw Error('เฉพาะครู');const t=s.topics.find(x=>x.id===p.topicId);if(!t)throw Error('ไม่พบหัวข้อ');out={exportedAt:now(),topic:t,groups:s.groups.filter(g=>g.topicId===t.id).map(groupPublic),feedback:s.feedback.filter(f=>f.topicId===t.id)};break;}
       default:throw Error('ไม่รองรับ API: '+action);
     }
     await saveState(s);return out;

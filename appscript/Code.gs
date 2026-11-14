@@ -21,10 +21,10 @@ const DB_CONFIG = Object.freeze({
 const TEACHER_TTL_SECONDS = 14400;
 
 const TABLES = {
+  // คงตำแหน่ง quizJSON ใน Topics ไว้เพื่อความเข้ากันได้กับชีตเดิม
   Topics: ['id','title','subject','className','description','accessCode','open','createdAt','quizJSON','type','targetUrl','requirements'],
   Groups: ['id','topicId','number','title','members','coverId','page1Id','page2Id','editCodeHash','revision','updatedAt','membersJSON'],
   Feedback: ['id','topicId','fromGroupId','toGroupId','text','createdAt'],
-  QuizAnswers: ['id','topicId','studentNo','optionIndex','correct','createdAt'],
   AdminLog: ['id','action','refId','createdAt']
 };
 
@@ -232,7 +232,6 @@ function canEdit_(g,p){
   if(!raw)return false;
   return hash_(raw+'|'+g.id)===g.editCodeHash||hash_(raw.toUpperCase()+'|'+g.id)===g.editCodeHash;
 }
-function quiz_(t){try{return JSON.parse(t.quizJSON||'null');}catch(_e){return null;}}
 function requireStr_(v,limit,label){
   const s=String(v||'').trim();
   assert_(s.length>0&&s.length<=(limit||500),label+' ไม่ถูกต้อง');
@@ -394,17 +393,14 @@ function route_(a,p){switch(a){
   case 'getTopics':{
     const isTeacher=teacher_(p),counts={};
     rows_('Groups').forEach(g=>{const tid=String(g.topicId||'');counts[tid]=(counts[tid]||0)+1;});
-    return rows_('Topics').map(t=>({...publicTopic_(t,isTeacher),groupCount:counts[String(t.id)]||0,quiz:quiz_(t)?{active:Boolean(quiz_(t).active)}:null}));
+    return rows_('Topics').map(t=>({...publicTopic_(t,isTeacher),groupCount:counts[String(t.id)]||0}));
   }
   case 'getTopic':{
-    const t=requireTopic_(p.topicId,p),isTeacher=teacher_(p),q=quiz_(t);
+    const t=requireTopic_(p.topicId,p),isTeacher=teacher_(p);
     const feedback=rows_('Feedback').filter(f=>String(f.topicId)===String(t.id)).map(({_row,...f})=>({
       id:String(f.id||''),topicId:String(f.topicId||''),fromGroupId:String(f.fromGroupId||''),toGroupId:String(f.toGroupId||''),text:String(f.text||''),createdAt:String(f.createdAt||'')
     }));
-    const answers=isTeacher?rows_('QuizAnswers').filter(a=>String(a.topicId)===String(t.id)).map(({_row,...a})=>({
-      id:String(a.id||''),topicId:String(a.topicId||''),studentNo:String(a.studentNo||''),optionIndex:Number(a.optionIndex),correct:isOpen_(a.correct),createdAt:String(a.createdAt||'')
-    })):null;
-    return {topic:publicTopic_(t,isTeacher),groups:groups_(t.id).map(publicGroup_),feedback,quiz:q?{text:String(q.text||''),options:Array.isArray(q.options)?q.options.map(String):[],active:Boolean(q.active)}:null,quizStats:answers};
+    return {topic:publicTopic_(t,isTeacher),groups:groups_(t.id).map(publicGroup_),feedback};
   }
   case 'createTopic':return withLock_(()=>{
     requireTeacher_(p);
@@ -495,36 +491,13 @@ function route_(a,p){switch(a){
     const f={id:uid_(),topicId:to.topicId,fromGroupId:from.id,toGroupId:to.id,text:content,createdAt:time_()};
     insert_('Feedback',f);return {saved:true};
   });
-  case 'setQuiz':return withLock_(()=>{
-    requireTeacher_(p);
-    const t=topic_(p.topicId);
-    assert_(String(t.type||'submission')!=='link','ปุ่มลิงก์ไม่มี Quiz ภายใน');
-    assert_(Array.isArray(p.options)&&p.options.length===4,'Quiz ต้องมี 4 ตัวเลือก');
-    const q={text:requireStr_(p.text,280,'คำถาม'),options:p.options.map(x=>requireStr_(x,160,'ตัวเลือก')),correctIndex:Number(p.correctIndex),active:true};
-    assert_(Number.isInteger(q.correctIndex)&&q.correctIndex>=0&&q.correctIndex<=3,'เฉลยไม่ถูกต้อง');
-    t.quizJSON=JSON.stringify(q);update_('Topics',t);log_('setQuiz',t.id);return {saved:true};
-  });
-  case 'answerQuiz':return withLock_(()=>{
-    const t=requireTopic_(p.topicId,p),q=quiz_(t);
-    assert_(q&&q.active,'ยังไม่เปิด Quiz');
-    const no=String(p.studentNo||'').trim();
-    assert_(/^\d{1,5}$/.test(no),'เลขที่นักเรียนไม่ถูกต้อง');
-    assert_(!rows_('QuizAnswers').some(x=>String(x.topicId)===String(t.id)&&String(x.studentNo)===no),'เลขที่นี้ส่งคำตอบแล้ว');
-    const index=Number(p.optionIndex);
-    assert_(Number.isInteger(index)&&index>=0&&index<=3,'กรุณาเลือกข้อที่ตอบ');
-    insert_('QuizAnswers',{id:uid_(),topicId:t.id,studentNo:no,optionIndex:index,correct:index===Number(q.correctIndex),createdAt:time_()});
-    return {saved:true};
-  });
   case 'exportTopic':{
     requireTeacher_(p);
     const t=topic_(p.topicId);
     const feedback=rows_('Feedback').filter(x=>String(x.topicId)===String(t.id)).map(({_row,...v})=>({
       id:String(v.id||''),topicId:String(v.topicId||''),fromGroupId:String(v.fromGroupId||''),toGroupId:String(v.toGroupId||''),text:String(v.text||''),createdAt:String(v.createdAt||'')
     }));
-    const quizAnswers=rows_('QuizAnswers').filter(x=>String(x.topicId)===String(t.id)).map(({_row,...v})=>({
-      id:String(v.id||''),topicId:String(v.topicId||''),studentNo:String(v.studentNo||''),optionIndex:Number(v.optionIndex),correct:isOpen_(v.correct),createdAt:String(v.createdAt||'')
-    }));
-    return {exportedAt:time_(),topic:publicTopic_(t,true),groups:groups_(t.id).map(publicGroup_),feedback,quizAnswers};
+    return {exportedAt:time_(),topic:publicTopic_(t,true),groups:groups_(t.id).map(publicGroup_),feedback};
   }
   default:throw new Error('ไม่มี API Action นี้: '+a);
 }}

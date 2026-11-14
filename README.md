@@ -21,8 +21,8 @@ PHYSICS COOLNUT CENTER เป็นศูนย์รวมกิจกรรม
 - คลิกดูรายละเอียดกลุ่มแล้วเห็นรายชื่อสมาชิกและไฟล์ที่ส่ง
 - โหมด **Slide Show**: ภาพหมู่ → ใบงาน 1 → ใบงาน 2, ปุ่มลูกศรใหญ่บน Touchscreen, Swipe, Fullscreen, Zoom, ปุ่ม Esc
 - Peer Feedback และ Revision บันทึกเหตุผลการปรับความเข้าใจ
-- Quiz ข้อสั้นภายในเว็บเป็น **ฟีเจอร์ย่อย** หากครูเปิดใช้; Quiz ภายนอกสร้างเป็นปุ่มลิงก์ได้เลย
-- ครู Export JSON รายการส่งงาน / รายชื่อสมาชิก / Feedback / ผล Quiz (ไม่รวมไฟล์ภาพ)
+- Quiz ภายนอกสร้างเป็นปุ่ม **ลิงก์** แยกต่างหากได้เลย (ไม่มี Quiz ซ้อนภายในเว็บส่งงาน)
+- ครู Export JSON รายการส่งงาน / รายชื่อสมาชิก / Feedback (ไม่รวมไฟล์ภาพ)
 
 ### โครงหน้าแรก
 
@@ -54,15 +54,15 @@ python -m http.server 4173
 3. เลือกดูผลงานกลุ่ม หรือกด **ฉาย** เพื่อนำเสนอภาพปกและใบงานบน Touchscreen
 4. คลิก **สร้างการ์ดกลุ่ม** กรอกรายชื่อสมาชิกทีละคน และอัปโหลดภาพทดลอง
 5. เข้า **โหมดครู** (DEMO ไม่ใช้รหัสจริง), กด **สร้างปุ่มกิจกรรม** → เลือก *ลิงก์* หรือ *ส่งงาน*, ทดลองสร้างและแก้ไขปุ่ม
-6. ทดสอบ Quiz ภายในกิจกรรมส่งงาน และใช้ปุ่มลิงก์สำหรับ Quiz ภายนอก
+6. ใช้ปุ่ม **ลิงก์** สำหรับ Quiz ภายนอก (เช่น Google Forms, Kahoot, Quizizz) แยกจากกิจกรรมส่งงาน
 
-> DEMO มี **4 ปุ่มตัวอย่าง** (2 ลิงก์, 2 ส่งงาน), กลุ่มตัวอย่าง 3 กลุ่ม และ Quiz สมมติ ข้อมูลอยู่เฉพาะเบราว์เซอร์ใน IndexedDB ไม่ซิงก์ระหว่างอุปกรณ์ ผลงานตัวอย่างไม่ใช่หลักฐานการสอนจริง
+> DEMO มี **4 ปุ่มตัวอย่าง** (2 ลิงก์, 2 ส่งงาน) และกลุ่มตัวอย่าง 3 กลุ่ม ข้อมูลอยู่เฉพาะเบราว์เซอร์ใน IndexedDB ไม่ซิงก์ระหว่างอุปกรณ์ ผลงานตัวอย่างไม่ใช่หลักฐานการสอนจริง
 
 ## สถาปัตยกรรม
 
 - Frontend: HTML5/CSS3/Vanilla JavaScript ES Modules — รันบน GitHub Pages ได้ (`index.html` อยู่ root)
-- Backend LIVE (ยังไม่ได้ Deploy): Google Apps Script HTMLService RPC Bridge
-- Database: Google Sheets (`Topics`, `Groups`, `Feedback`, `QuizAnswers`, `AdminLog`)
+- Backend LIVE: Google Apps Script Web App (`doPost` JSON + RPC Bridge)
+- Database: Google Sheets (`Topics`, `Groups`, `Feedback`, `AdminLog`)
 - Media: Google Drive แบบ Private; API ยืนยันสิทธิ์ก่อนคืนรูป (ห้ามใช้ลิงก์ Anyone With Link)
 - Auth: ครูใช้ Password Hash + Session Token; นักเรียนใช้ Access Code ของกิจกรรมและ Group Edit Code แยกกัน
 - Photo Upload: บีบอัดภาพบน Client ก่อนส่ง แต่ต้องทดสอบกับ Wi-Fi และอุปกรณ์จริงทุกครั้ง

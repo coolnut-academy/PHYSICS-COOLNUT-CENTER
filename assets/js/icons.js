@@ -25,7 +25,6 @@ const paths = {
   message:'<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8A8.5 8.5 0 0 1 12.5 20a8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8A8.5 8.5 0 0 1 12.5 3H13a8.5 8.5 0 0 1 8 8z"/>',
   refresh:'<path d="M20 7v5h-5M4 17v-5h5M5 9a8 8 0 0 1 13-3l2 1M4 17l2 1a8 8 0 0 0 13-3"/>',
   shield:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/>',
-  quiz:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h4"/>',
   trash:'<path d="M3 6h18m-2 0-1 14H6L5 6m3 0V4h8v2"/>',
   download:'<path d="M12 3v12m-5-5 5 5 5-5M4 17v4h16v-4"/>',
   info:'<circle cx="12" cy="12" r="10"/><path d="M12 11v5m0-8h.01"/>',
