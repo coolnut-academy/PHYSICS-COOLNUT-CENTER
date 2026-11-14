@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <style>
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, sans-serif;
+      color: #143326;
+      background: #f7f9f5
+    }
+
+    .box {
+      max-width: 460px;
+      margin: 48px auto;
+      padding: 20px;
+      border: 1px solid #d5e2d8;
+      border-radius: 14px;
+      background: #fff
+    }
+  </style>
+</head>
+
+<body>
+  <div id="standalone" hidden class="box"><strong>PHYSICS COOLNUT CENTER</strong>
+    <p>Apps Script RPC Bridge พร้อมใช้งาน (เชื่อมต่อผ่าน iframe ของเว็บไซต์)</p>
+  </div>
+  <script>
+    if (window.self === window.parent) { document.getElementById('standalone').hidden = false; }
+    // ค่า ORIGIN นี้ถูกกำหนดฝั่ง Apps Script Script Properties เท่านั้น
+    const ALLOWED_ORIGINS = <?!= allowedOriginsJSON ?>;
+    function allowed(origin) { return ALLOWED_ORIGINS.includes(origin) }
+    window.addEventListener('message', function (event) {
+      const msg = event.data || {};
+      if (msg.type !== 'classfolio:rpc' || event.source !== window.parent) return;
+      const id = String(msg.id || '');
+      if (!allowed(event.origin)) {
+        event.source.postMessage({ type: 'classfolio:rpc-result', id: id, ok: false, error: 'Origin ' + event.origin + ' ยังไม่ได้รับอนุญาตใน ALLOWED_ORIGINS' }, event.origin);
+        return;
+      }
+      google.script.run.withSuccessHandler(function (result) {
+        if (!result) {
+          event.source.postMessage({ type: 'classfolio:rpc-result', id: id, ok: false, error: 'เซิร์ฟเวอร์ Apps Script ไม่ได้ส่งผลลัพธ์กลับ' }, event.origin);
+          return;
+        }
+        event.source.postMessage({ type: 'classfolio:rpc-result', id: id, ok: !!result.ok, data: result.data, error: result.error }, event.origin);
+      }).withFailureHandler(function (err) {
+        event.source.postMessage({ type: 'classfolio:rpc-result', id: id, ok: false, error: String(err && err.message ? err.message : err) }, event.origin);
+      }).api(msg.action, msg.payload || {});
+    });
+    window.parent.postMessage({ type: 'classfolio:bridge-ready' }, '*');
+  </script>
+</body>
+
+</html>
