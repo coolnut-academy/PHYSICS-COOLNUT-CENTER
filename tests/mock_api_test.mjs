@@ -43,10 +43,13 @@ let cannotConvert=false;try{await mock.call('updateTopic',{type:'link',token:tea
 assert.ok(cannotConvert,'submission with existing groups cannot change type');
 let duplicate=false;try{await mock.call('createGroup',{topicId:submission.id,accessCode:'TEST99',number:2,membersList:[roster[0],roster[0]]});}catch{duplicate=true;}
 assert.ok(duplicate,'duplicate student should fail');
+let badFb=false;try{await mock.call('addFeedback',{accessCode:'WRONG',toGroupId:g.group.id,author:'กลุ่ม 3',text:'ทดสอบสิทธิ์'});}catch{badFb=true;}
+assert.ok(badFb,'feedback with wrong accessCode must fail');
+await mock.call('addFeedback',{accessCode:'TEST99',toGroupId:g.group.id,author:'กลุ่ม 3',text:'ตรวจค่า d จากจุดหมุนให้ครบถ้วน'});
+await mock.call('addFeedback',{accessCode:'TEST99',toGroupId:g.group.id,text:'ชัดเจนมาก'});
 const other=await mock.call('createGroup',{topicId:submission.id,accessCode:'TEST99',number:2,title:'กลุ่ม 2',membersList:[{firstName:'อภิชาติ',lastName:'สมมติ',className:'ม.4/1',studentNo:'16'}]});
-await mock.call('addFeedback',{accessCode:'TEST99',fromGroupId:other.group.id,toGroupId:g.group.id,editCode:other.editCode,text:'ตรวจค่า d จากจุดหมุนให้ครบถ้วน'});
 const res=await mock.call('getTopic',{topicId:submission.id,token:teacher});
-assert.equal(res.feedback.length,1);assert.equal(res.groups[0].membersList[0].className,'ม.4/1');
+assert.equal(res.feedback.length,2);assert.equal(res.feedback[1].fromGroupId,'เพื่อนร่วมกิจกรรม');assert.equal(res.groups[0].membersList[0].className,'ม.4/1');
 const exported=await mock.call('exportTopic',{token:teacher,topicId:submission.id});
-assert.equal(exported.groups.length,2);assert.equal(exported.groups[0].membersList.length,2);
-console.log('PASS: mock API — button types, link validation, editing, group roster, media, access, feedback, export');
+assert.equal(exported.groups.length,2);assert.equal(exported.groups[0].membersList.length,2);assert.equal(exported.feedback.length,2);
+console.log('PASS: mock API — button types, link validation, editing, group roster, media, access, open feedback, export');

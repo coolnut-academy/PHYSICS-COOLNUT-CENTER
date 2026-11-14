@@ -479,17 +479,19 @@ function route_(a,p){switch(a){
     return {dataUrl};
   }
   case 'addFeedback':return withLock_(()=>{
-    const from=rows_('Groups').find(x=>String(x.id)===String(p.fromGroupId||''));
     const to=rows_('Groups').find(x=>String(x.id)===String(p.toGroupId||''));
-    assert_(from&&to&&String(from.topicId)===String(to.topicId)&&String(from.id)!==String(to.id),'เลือกกลุ่มผู้ให้และผู้รับให้ถูกต้อง');
+    assert_(to,'ไม่พบกลุ่มผู้รับ Feedback');
     requireTopic_(to.topicId,p);
-    assert_(canEdit_(from,p),'รหัสกลุ่มผู้ให้ Feedback ไม่ถูกต้อง');
     const content=requireStr_(p.text,700,'ข้อความ Feedback');
-    assert_(content.length>=10,'กรอก Feedback อย่างน้อย 10 ตัวอักษร');
-    const old=rows_('Feedback').find(x=>String(x.fromGroupId)===String(from.id)&&String(x.toGroupId)===String(to.id));
-    if(old){old.text=content;old.createdAt=time_();update_('Feedback',old);return {saved:true,updated:true};}
-    const f={id:uid_(),topicId:to.topicId,fromGroupId:from.id,toGroupId:to.id,text:content,createdAt:time_()};
-    insert_('Feedback',f);return {saved:true};
+    assert_(content.length>=2,'กรอกความคิดเห็นอย่างน้อย 2 ตัวอักษร');
+    let author=text_(p.author??p.senderName??'',60);
+    if(!author&&p.fromGroupId){
+      const from=rows_('Groups').find(x=>String(x.id)===String(p.fromGroupId)&&String(x.topicId)===String(to.topicId));
+      author=from?String(from.id):text_(p.fromGroupId,60);
+    }
+    if(!author)author=teacher_(p)?'ครูผู้สอน':'เพื่อนร่วมกิจกรรม';
+    const f={id:uid_(),topicId:to.topicId,fromGroupId:author,toGroupId:to.id,text:content,createdAt:time_()};
+    insert_('Feedback',f);return {saved:true,feedback:f};
   });
   case 'exportTopic':{
     requireTeacher_(p);

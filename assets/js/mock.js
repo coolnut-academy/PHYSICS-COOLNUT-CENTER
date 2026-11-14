@@ -73,11 +73,15 @@ export const mock={
         const dataUrl=s.media[id];if(!dataUrl)throw Error('ไฟล์ภาพสูญหาย');return {dataUrl};
       }
       case 'addFeedback':{
-        const target=s.groups.find(x=>x.id===p.toGroupId), source=s.groups.find(x=>x.id===p.fromGroupId);if(!target||!source||target.topicId!==source.topicId)throw Error('เลือกกลุ่มให้ถูกต้อง');hasAccess(s,target.topicId,p);if(!owned(source,p))throw Error('รหัสแก้ไขของกลุ่มผู้ให้ Feedback ไม่ถูกต้อง');if(target.id===source.id)throw Error('ไม่สามารถให้ Feedback กลุ่มตนเอง');
-        const text=(p.text||'').trim();if(text.length<10)throw Error('อธิบาย Feedback อย่างน้อย 10 ตัวอักษร');
-        const existing=s.feedback.find(f=>f.toGroupId===target.id&&f.fromGroupId===source.id);
-        if(existing){existing.text=text;existing.createdAt=now();out=existing;}
-        else{out={id:genId(),topicId:target.topicId,fromGroupId:source.id,toGroupId:target.id,text,createdAt:now()};s.feedback.push(out);}break;
+        const target=s.groups.find(x=>x.id===p.toGroupId);if(!target)throw Error('ไม่พบกลุ่มผู้รับ Feedback');hasAccess(s,target.topicId,p);
+        const text=(p.text||'').trim().slice(0,700);if(text.length<2)throw Error('กรอกความคิดเห็นอย่างน้อย 2 ตัวอักษร');
+        let author=String(p.author??p.senderName??'').trim().slice(0,60);
+        if(!author&&p.fromGroupId){
+          const source=s.groups.find(x=>x.id===p.fromGroupId&&x.topicId===target.topicId);
+          author=source?source.id:String(p.fromGroupId).trim().slice(0,60);
+        }
+        if(!author)author=p.token==='demo-teacher'?'ครูผู้สอน':'เพื่อนร่วมกิจกรรม';
+        out={id:genId(),topicId:target.topicId,fromGroupId:author,toGroupId:target.id,text,createdAt:now()};s.feedback.push(out);break;
       }
       case 'exportTopic':{if(p.token!=='demo-teacher')throw Error('เฉพาะครู');const t=s.topics.find(x=>x.id===p.topicId);if(!t)throw Error('ไม่พบหัวข้อ');out={exportedAt:now(),topic:t,groups:s.groups.filter(g=>g.topicId===t.id).map(groupPublic),feedback:s.feedback.filter(f=>f.topicId===t.id)};break;}
       default:throw Error('ไม่รองรับ API: '+action);
