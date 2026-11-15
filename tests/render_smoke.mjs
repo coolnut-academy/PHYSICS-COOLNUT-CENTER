@@ -13,6 +13,9 @@ await import('../assets/js/app.js');
 await new Promise(resolve=>setTimeout(resolve,350));
 const content=elements['#app'].innerHTML;
 assert.ok(content.includes('PHYSICS COOLNUT CENTER'),'brand should render');
+assert.ok(content.includes('ครูผู้สอน นายสาธิต ศิริวัชน์'),'teacher name should render prominently');
+assert.ok(content.includes('class="lucide '),'Lucide SVG icons should render');
+assert.ok(content.includes('ui-zoom-in')&&content.includes('ui-zoom-out'),'UI zoom controls should render');
 if(mode==='home'){
  assert.ok(content.includes('เรียนรู้ / ลิงก์กิจกรรม'));
  assert.ok(content.includes('ส่งงาน / ผลงานกลุ่ม'));
